@@ -91,8 +91,33 @@ function hideError(elId) {
 // ── QR Code (via qrcode.min.js) ──────────────────────────────────────────────
 // Wrapper sobre a lib QRCode.js — produz canvas dentro do container.
 function drawQRCode(containerEl, text) {
+  // ── DEBUG ─────────────────────────────────────────────────────────────────
+  console.log("[qr:debug] drawQRCode chamado");
+  console.log("[qr:debug] containerEl:", containerEl);
+  if (!containerEl) {
+    console.error("[qr:debug] ERRO: containerEl é null/undefined — o elemento #qr-container não existe no DOM");
+    return;
+  }
+  console.log("[qr:debug] text:", text);
+  console.log("[qr:debug] typeof QRCode:", typeof QRCode);
+  const step = containerEl.closest(".step");
+  const screen = containerEl.closest(".screen");
+  console.log("[qr:debug] step pai (.step):", step?.id, "| active:", step?.classList.contains("active"));
+  console.log("[qr:debug] screen pai (.screen):", screen?.id, "| active:", screen?.classList.contains("active"));
+  console.log("[qr:debug] offsetParent:", containerEl.offsetParent);
+  console.log("[qr:debug] offsetWidth:", containerEl.offsetWidth, "offsetHeight:", containerEl.offsetHeight);
+  const rect = containerEl.getBoundingClientRect();
+  console.log("[qr:debug] getBoundingClientRect:", JSON.stringify({ top: rect.top, left: rect.left, width: rect.width, height: rect.height }));
+  const cs = getComputedStyle(containerEl);
+  console.log("[qr:debug] computed display:", cs.display, "| visibility:", cs.visibility, "| opacity:", cs.opacity);
+  // ── FIM DEBUG ─────────────────────────────────────────────────────────────
+
   containerEl.innerHTML = "";
   try {
+    if (typeof QRCode === "undefined") {
+      console.error("[qr:debug] ERRO: QRCode não está definido — qrcode.min.js pode não ter carregado");
+      return;
+    }
     new QRCode(containerEl, {
       text: text,
       width: 160,
@@ -101,8 +126,22 @@ function drawQRCode(containerEl, text) {
       colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.M,
     });
+    // ── DEBUG ───────────────────────────────────────────────────────────────
+    const canvas = containerEl.querySelector("canvas");
+    const img = containerEl.querySelector("img");
+    console.log("[qr:debug] canvas criado:", canvas, "| canvas.width:", canvas?.width, "canvas.height:", canvas?.height);
+    console.log("[qr:debug] img criada:", img, "| img.src (primeiros 80 chars):", img?.src?.slice(0, 80));
+    console.log("[qr:debug] innerHTML após draw (primeiros 120 chars):", containerEl.innerHTML.slice(0, 120));
+    setTimeout(() => {
+      const c2 = containerEl.querySelector("canvas");
+      const i2 = containerEl.querySelector("img");
+      console.log("[qr:debug] 500ms depois — canvas:", c2?.width, "x", c2?.height,
+        "| img.display:", i2 ? getComputedStyle(i2).display : "n/a",
+        "| container.offsetWidth:", containerEl.offsetWidth);
+    }, 500);
+    // ── FIM DEBUG ───────────────────────────────────────────────────────────
   } catch (e) {
-    console.warn("[qr] erro ao gerar QR Code:", e);
+    console.error("[qr:debug] EXCEÇÃO ao gerar QR Code:", e);
   }
 }
 
@@ -204,6 +243,12 @@ async function startSender(file) {
   // Gera QR Code com URL para auto-preenchimento no receptor
   const qrContainer = $("qr-container");
   const roomURL = `${location.origin}${location.pathname}?room=${roomCode}`;
+  // ── DEBUG ───────────────────────────────────────────────────────────────
+  console.log("[qr:debug] startSender — roomURL:", roomURL);
+  console.log("[qr:debug] startSender — qrContainer element:", qrContainer);
+  console.log("[qr:debug] startSender — #sender-step-wait active:", $("sender-step-wait")?.classList.contains("active"));
+  console.log("[qr:debug] startSender — #screen-sender active:", $("screen-sender")?.classList.contains("active"));
+  // ── FIM DEBUG ─────────────────────────────────────────────────────────
   drawQRCode(qrContainer, roomURL);
 
   // Abre sinalização
