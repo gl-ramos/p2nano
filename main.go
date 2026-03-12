@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -14,6 +15,17 @@ import (
 
 //go:embed frontend
 var embeddedFrontend embed.FS
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const (
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 60 * time.Second
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
+	// Maximum message size allowed from peer.
+	maxMessageSize = 4096
+)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +45,9 @@ type Room struct {
 	sender   *Peer
 	receiver *Peer
 	created  time.Time
+	// paired is true once both sender and receiver have joined; paired rooms
+	// are never reaped by the stale-room GC.
+	paired bool
 }
 
 // ── Hub ──────────────────────────────────────────────────────────────────────
@@ -48,34 +63,45 @@ func newHub() *Hub {
 	return h
 }
 
-// reapStaleRooms removes rooms that have been open for more than 10 minutes
-// without a complete peer pair, to avoid memory leaks.
+// reapStaleRooms removes rooms that have been waiting for a peer pair for more
+// than 10 minutes.  Fully-paired rooms are never reaped here — they clean up
+// themselves when a peer disconnects.
 func (h *Hub) reapStaleRooms() {
 	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
-		h.mu.Lock()
 		now := time.Now()
+		h.mu.Lock()
 		for id, room := range h.rooms {
-			if now.Sub(room.created) > 10*time.Minute {
-				log.Printf("[hub] reaping stale room %s", id)
-				if room.sender != nil {
-					close(room.sender.send)
-				}
-				if room.receiver != nil {
-					close(room.receiver.send)
-				}
-				delete(h.rooms, id)
+			// Only reap unpaired rooms that have been waiting too long.
+			if room.paired {
+				continue
+			}
+			if now.Sub(room.created) <= 10*time.Minute {
+				continue
+			}
+			log.Printf("[hub] reaping stale room %s", id)
+
+			// Nil the pointers inside the lock before closing the channels so
+			// that concurrent sendMsg calls see a nil peer and drop the message
+			// instead of sending to a closed channel.
+			sender := room.sender
+			receiver := room.receiver
+			room.sender = nil
+			room.receiver = nil
+			delete(h.rooms, id)
+
+			// Channel closes happen outside-ish but still under the lock is
+			// fine; writePump only reads from the channel, it never sends.
+			if sender != nil {
+				close(sender.send)
+			}
+			if receiver != nil {
+				close(receiver.send)
 			}
 		}
 		h.mu.Unlock()
 	}
-}
-
-func (h *Hub) deleteRoom(id string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	delete(h.rooms, id)
 }
 
 // ── WebSocket upgrader ───────────────────────────────────────────────────────
@@ -91,11 +117,29 @@ func newPeer(conn *websocket.Conn) *Peer {
 }
 
 func (p *Peer) writePump() {
-	defer p.conn.Close()
-	for msg := range p.send {
-		if err := p.conn.WriteJSON(msg); err != nil {
-			log.Printf("[peer] write error: %v", err)
-			return
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		p.conn.Close()
+	}()
+	for {
+		select {
+		case msg, ok := <-p.send:
+			p.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				// Channel was closed; send a close frame and exit.
+				p.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := p.conn.WriteJSON(msg); err != nil {
+				log.Printf("[peer] write error: %v", err)
+				return
+			}
+		case <-ticker.C:
+			p.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := p.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }
@@ -109,7 +153,8 @@ func (p *Peer) sendMsg(msg Message) {
 }
 
 func errMsg(reason string) Message {
-	return Message{Type: "error", Payload: json.RawMessage(`"` + reason + `"`)}
+	payload, _ := json.Marshal(reason)
+	return Message{Type: "error", Payload: json.RawMessage(payload)}
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -120,6 +165,14 @@ func (h *Hub) wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[ws] upgrade error: %v", err)
 		return
 	}
+
+	// Configure read limits and initial deadline.
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 
 	peer := newPeer(conn)
 	go peer.writePump()
@@ -216,6 +269,7 @@ func (h *Hub) wsHandler(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				room.receiver = peer
+				room.paired = true
 				sender := room.sender
 				h.mu.Unlock()
 				log.Printf("[hub] receiver joined room %s", roomID)
@@ -259,11 +313,14 @@ func (h *Hub) wsHandler(w http.ResponseWriter, r *http.Request) {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 func main() {
-	port := "8080"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	hub := newHub()
 
-	// Serve frontend estático embutido no binário (sem dependência de path)
+	// Serve embedded frontend static files.
 	sub, err := fs.Sub(embeddedFrontend, "frontend")
 	if err != nil {
 		log.Fatalf("[p2nano] embed error: %v", err)

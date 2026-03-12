@@ -20,6 +20,10 @@ const WS_URL = (() => {
   return `${proto}://${location.host}/ws`;
 })();
 
+// ── BIP39 Set para lookups O(1) ──────────────────────────────────────────────
+// BIP39_PT is defined in bip39_pt.js (loaded before this script).
+const BIP39_SET = new Set(BIP39_PT);
+
 // ── Utilitários ──────────────────────────────────────────────────────────────
 function randomRoomCode() {
   const arr = new Uint16Array(3);
@@ -170,6 +174,8 @@ let _pc = null;  // RTCPeerConnection
 let _dc = null;  // RTCDataChannel (lado do sender)
 let _file = null; // File selecionado
 let _receivedBlob = null; // Blob reconstruído no receptor
+// ICE candidates que chegaram antes do setRemoteDescription estar pronto.
+let _pendingCandidates = [];
 
 function resetState() {
   if (_sig) {
@@ -183,6 +189,7 @@ function resetState() {
   _dc = null;
   _file = null;
   _receivedBlob = null;
+  _pendingCandidates = [];
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -237,13 +244,23 @@ async function startSender(file) {
         break;
 
       case "answer":
-        _pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+        _pc.setRemoteDescription(new RTCSessionDescription(msg.payload))
+          .then(() => {
+            // Flush any ICE candidates that arrived before the remote description.
+            const queued = _pendingCandidates.splice(0);
+            return Promise.all(
+              queued.map((c) => _pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn))
+            );
+          })
+          .catch(console.error);
         break;
 
       case "ice":
-        _pc
-          .addIceCandidate(new RTCIceCandidate(msg.payload))
-          .catch(console.warn);
+        if (_pc && _pc.remoteDescription) {
+          _pc.addIceCandidate(new RTCIceCandidate(msg.payload)).catch(console.warn);
+        } else {
+          _pendingCandidates.push(msg.payload);
+        }
         break;
 
       case "peer_left":
@@ -285,13 +302,13 @@ function initSenderPeer() {
     .catch(console.error);
 }
 
-// Envia o arquivo em chunks, respeitando o buffer do DataChannel
+// Envia o arquivo em chunks usando o evento bufferedamountlow para
+// backpressure — evita busy-polling e reduz latência.
 async function sendFile(file, dc) {
   const totalSize = file.size;
   let offset = 0;
   let bytesSentForSpeed = 0;
   let lastSpeedTime = Date.now();
-  const startTime = Date.now();
 
   hideError("sender-transfer-error");
   showStep("screen-sender", "sender-step-transfer");
@@ -305,11 +322,15 @@ async function sendFile(file, dc) {
     }),
   );
 
+  // Use bufferedAmountLowThreshold + event instead of a polling loop.
+  dc.bufferedAmountLowThreshold = BUFFER_THRESHOLD;
+
   while (offset < totalSize) {
-    // Controle de backpressure
+    // If the buffer is above the threshold, wait for the browser to drain it.
     if (dc.bufferedAmount > BUFFER_THRESHOLD) {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      continue;
+      await new Promise((resolve) => {
+        dc.addEventListener("bufferedamountlow", resolve, { once: true });
+      });
     }
 
     const slice = file.slice(offset, offset + CHUNK_SIZE);
@@ -388,10 +409,10 @@ async function startReceiver(roomCode) {
         break;
 
       case "ice":
-        if (_pc) {
-          _pc
-            .addIceCandidate(new RTCIceCandidate(msg.payload))
-            .catch(console.warn);
+        if (_pc && _pc.remoteDescription) {
+          _pc.addIceCandidate(new RTCIceCandidate(msg.payload)).catch(console.warn);
+        } else {
+          _pendingCandidates.push(msg.payload);
         }
         break;
 
@@ -433,6 +454,13 @@ function initReceiverPeer(offerSDP) {
 
   _pc
     .setRemoteDescription(new RTCSessionDescription(offerSDP))
+    .then(() => {
+      // Flush any ICE candidates queued before the remote description was set.
+      const queued = _pendingCandidates.splice(0);
+      return Promise.all(
+        queued.map((c) => _pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn))
+      );
+    })
     .then(() => _pc.createAnswer())
     .then((answer) => _pc.setLocalDescription(answer))
     .then(() => _sig.send({ type: "answer", payload: _pc.localDescription }))
@@ -478,7 +506,8 @@ function setupReceiverChannel(dc) {
         a.href = url;
         a.download = fileName;
         a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        // Revoke promptly — 1 s is enough for the browser to start the download.
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
 
         // Botão de download manual como fallback
         $("receiver-btn-download").onclick = () => {
@@ -487,7 +516,8 @@ function setupReceiverChannel(dc) {
           a2.href = url2;
           a2.download = fileName;
           a2.click();
-          setTimeout(() => URL.revokeObjectURL(url2), 60000);
+          // Revoke after a short delay so the download starts before cleanup.
+          setTimeout(() => URL.revokeObjectURL(url2), 1000);
         };
         showStep("screen-receiver", "receiver-step-done");
         return;
@@ -653,7 +683,7 @@ WORD_IDS.forEach((id, i) => {
   el.addEventListener("input", () => {
     if (i >= 2) return; // último campo: não avança
     const val = el.value.trim().toLowerCase();
-    if (val.length >= 3 && BIP39_PT.includes(val)) {
+    if (val.length >= 3 && BIP39_SET.has(val)) {
       $(WORD_IDS[i + 1]).focus();
       $(WORD_IDS[i + 1]).select();
     }
