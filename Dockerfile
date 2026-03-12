@@ -12,7 +12,7 @@ COPY main.go .
 COPY frontend/ ./frontend/
 
 # Build estático: sem cgo, binário autocontido com frontend embutido
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
     go build -ldflags="-s -w" -o /p2nano .
 
 # ── Stage 2: imagem final mínima ──────────────────────────────────────────
