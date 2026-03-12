@@ -201,12 +201,10 @@ async function startSender(file) {
   hideError("sender-ws-error");
   showStep("screen-sender", "sender-step-wait");
 
-  // Gera QR Code com URL para auto-preenchimento no receptor.
-  // setTimeout(0) garante que o browser fez o reflow antes de desenhar o canvas,
-  // evitando que o QRCode.js leia dimensões zero do container recém-exibido.
+  // Gera QR Code com URL para auto-preenchimento no receptor
   const qrContainer = $("qr-container");
   const roomURL = `${location.origin}${location.pathname}?room=${roomCode}`;
-  setTimeout(() => drawQRCode(qrContainer, roomURL), 0);
+  drawQRCode(qrContainer, roomURL);
 
   // Abre sinalização
   try {
