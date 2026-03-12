@@ -1,0 +1,447 @@
+/* ── Reset & Base ───────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3247;
+    --accent: #5b8af0;
+    --accent-dim: #3a5dba;
+    --success: #34c97a;
+    --error: #e05555;
+    --text: #e8eaf0;
+    --text-muted: #7a7f99;
+    --radius: 12px;
+    --radius-sm: 8px;
+    font-size: 16px;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family:
+        "Segoe UI",
+        system-ui,
+        -apple-system,
+        sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem 1.25rem;
+}
+
+@media (min-width: 481px) {
+    body {
+        padding: 1.5rem 2rem;
+    }
+}
+
+@media (min-height: 600px) {
+    body {
+        align-items: center;
+    }
+}
+
+#app {
+    width: 100%;
+    max-width: 560px;
+}
+
+/* ── Screens ────────────────────────────────────────────────────────────── */
+.screen {
+    display: none;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.screen.active {
+    display: flex;
+}
+
+/* ── Steps inside a screen ──────────────────────────────────────────────── */
+.step {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+.step.active {
+    display: flex;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+h1 {
+    font-size: clamp(1.6rem, 5vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+}
+
+h2 {
+    font-size: clamp(1.2rem, 4vw, 1.4rem);
+    font-weight: 600;
+}
+h3 {
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+    font-weight: 600;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* ── Cards (tela inicial) ───────────────────────────────────────────────── */
+.card-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 480px) {
+    .card-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.25rem;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    transition:
+        border-color 0.15s,
+        background 0.15s;
+    color: var(--text);
+}
+.card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+}
+
+.card-icon {
+    font-size: 1.8rem;
+}
+.card-label {
+    font-size: 1rem;
+    font-weight: 600;
+}
+.card-desc {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* ── Back button ────────────────────────────────────────────────────────── */
+.btn-back {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0;
+    width: fit-content;
+    transition: color 0.15s;
+}
+.btn-back:hover {
+    color: var(--text);
+}
+
+/* ── Drop zone ──────────────────────────────────────────────────────────── */
+.drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: clamp(1.5rem, 6vw, 3rem) clamp(1rem, 4vw, 2rem);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    transition:
+        border-color 0.15s,
+        background 0.15s;
+    cursor: pointer;
+}
+.drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(91, 138, 240, 0.07);
+}
+.drop-icon {
+    font-size: 2.5rem;
+}
+.drop-zone p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
+    transition: background 0.15s;
+    touch-action: manipulation;
+}
+.btn-primary:hover {
+    background: var(--accent-dim);
+}
+
+.btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        color 0.2s;
+    touch-action: manipulation;
+}
+.btn-secondary:hover {
+    background: var(--border);
+}
+.btn-secondary.copied {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+/* ── File info ──────────────────────────────────────────────────────────── */
+.file-info {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    overflow: hidden;
+    min-width: 0;
+}
+.file-info .file-name {
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.file-info .file-size {
+    flex-shrink: 0;
+}
+
+/* ── Code block ─────────────────────────────────────────────────────────── */
+.code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+.code-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.code-words {
+    font-size: clamp(1.1rem, 4.5vw, 1.6rem);
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+    text-align: center;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+/* ── QR Code ────────────────────────────────────────────────────────────── */
+.qr-container {
+    width: min(160px, 40vw);
+    height: min(160px, 40vw);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #ffffff;
+    padding: 6px;
+}
+.qr-container canvas,
+.qr-container img {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    image-rendering: pixelated;
+}
+.qr-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ── Word inputs (receptor) ─────────────────────────────────────────────── */
+.instructions {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.word-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+}
+.word-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.6rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    /* evita zoom no iOS ao focar */
+    font-size: max(16px, 0.9rem);
+}
+.word-input:focus {
+    border-color: var(--accent);
+}
+.word-sep {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 400px) {
+    .word-inputs {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .word-sep {
+        display: none;
+    }
+    .word-input {
+        flex: 1 1 100%;
+    }
+}
+
+/* ── Progress ───────────────────────────────────────────────────────────── */
+.transfer-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.transfer-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.progress-bar {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.1s linear;
+}
+.transfer-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+#sender-eta,
+#receiver-eta {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+/* ── Status msg ─────────────────────────────────────────────────────────── */
+.status-msg {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* ── Spinner ────────────────────────────────────────────────────────────── */
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Done ───────────────────────────────────────────────────────────────── */
+.done-icon {
+    font-size: 3rem;
+    color: var(--success);
+    text-align: center;
+}
+#screen-sender .step#sender-step-done,
+#screen-receiver .step#receiver-step-done {
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+}
+
+/* ── Error ──────────────────────────────────────────────────────────────── */
+.error-msg {
+    color: var(--error);
+    font-size: 0.88rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(224, 85, 85, 0.1);
+    border: 1px solid rgba(224, 85, 85, 0.3);
+    border-radius: var(--radius-sm);
+}
+.hidden {
+    display: none !important;
+}

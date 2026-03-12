@@ -1,0 +1,6 @@
+services:
+  p2nano:
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8080:8080

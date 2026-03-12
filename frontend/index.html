@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>p2nano — Transferência P2P</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div id="app">
+            <!-- ── Tela inicial ───────────────────────────────────────────── -->
+            <div id="screen-home" class="screen active">
+                <header>
+                    <h1>p2nano</h1>
+                    <p class="subtitle">
+                        Transferência direta entre dispositivos.<br />Sem
+                        servidor. Sem nuvem.
+                    </p>
+                </header>
+                <div class="card-row">
+                    <button class="card" id="btn-send">
+                        <span class="card-icon">⬆️</span>
+                        <span class="card-label">Enviar arquivo</span>
+                        <span class="card-desc"
+                            >Gera um código de 3 palavras para o receptor
+                            usar</span
+                        >
+                    </button>
+                    <button class="card" id="btn-receive">
+                        <span class="card-icon">⬇️</span>
+                        <span class="card-label">Receber arquivo</span>
+                        <span class="card-desc"
+                            >Digita as 3 palavras fornecidas por quem
+                            envia</span
+                        >
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Tela do remetente ──────────────────────────────────────── -->
+            <div id="screen-sender" class="screen">
+                <header>
+                    <button class="btn-back" id="sender-back">
+                        &#8592; Voltar
+                    </button>
+                    <h2>Enviar arquivo</h2>
+                </header>
+
+                <!-- Passo 1: selecionar arquivo -->
+                <div id="sender-step-file" class="step active">
+                    <div id="drop-zone" class="drop-zone">
+                        <span class="drop-icon">&#128196;</span>
+                        <p>Arraste um arquivo aqui ou</p>
+                        <label class="btn-primary" for="file-input"
+                            >Selecionar arquivo</label
+                        >
+                        <input type="file" id="file-input" hidden />
+                    </div>
+                </div>
+
+                <!-- Passo 2: aguardando receptor -->
+                <div id="sender-step-wait" class="step">
+                    <div class="file-info" id="sender-file-info"></div>
+                    <div class="code-block">
+                        <p class="code-label">Código da sala</p>
+                        <div class="code-words" id="room-code-display"></div>
+                        <button class="btn-secondary" id="btn-copy-code">
+                            Copiar código
+                        </button>
+                        <div id="qr-container" class="qr-container"></div>
+                        <p class="qr-hint">Escaneie com o receptor</p>
+                    </div>
+                    <div class="status-msg" id="sender-status">
+                        Aguardando receptor conectar...
+                    </div>
+                    <div class="spinner" id="sender-spinner"></div>
+                    <div class="error-msg hidden" id="sender-ws-error"></div>
+                </div>
+
+                <!-- Passo 3: transferindo -->
+                <div id="sender-step-transfer" class="step">
+                    <div class="file-info" id="sender-file-info-2"></div>
+                    <div class="transfer-box">
+                        <div class="transfer-label">Enviando...</div>
+                        <div class="progress-bar">
+                            <div
+                                class="progress-fill"
+                                id="sender-progress-fill"
+                            ></div>
+                        </div>
+                        <div class="transfer-stats">
+                            <span id="sender-progress-pct">0%</span>
+                            <span id="sender-eta"></span>
+                            <span id="sender-speed"></span>
+                        </div>
+                    </div>
+                    <div class="error-msg hidden" id="sender-transfer-error"></div>
+                </div>
+
+                <!-- Passo 4: concluído -->
+                <div id="sender-step-done" class="step">
+                    <div class="done-icon">&#10003;</div>
+                    <h3>Arquivo enviado!</h3>
+                    <p id="sender-done-info"></p>
+                    <button class="btn-primary" id="sender-btn-new">
+                        Nova transferência
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Tela do receptor ───────────────────────────────────────── -->
+            <div id="screen-receiver" class="screen">
+                <header>
+                    <button class="btn-back" id="receiver-back">
+                        &#8592; Voltar
+                    </button>
+                    <h2>Receber arquivo</h2>
+                </header>
+
+                <!-- Passo 1: digitar código -->
+                <div id="receiver-step-code" class="step active">
+                    <p class="instructions">
+                        Digite as 3 palavras que o remetente está exibindo:
+                    </p>
+                    <div class="word-inputs">
+                        <input
+                            type="text"
+                            class="word-input"
+                            id="word1"
+                            placeholder="primeira"
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                        <span class="word-sep">—</span>
+                        <input
+                            type="text"
+                            class="word-input"
+                            id="word2"
+                            placeholder="segunda"
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                        <span class="word-sep">—</span>
+                        <input
+                            type="text"
+                            class="word-input"
+                            id="word3"
+                            placeholder="terceira"
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                    </div>
+                    <button class="btn-primary" id="btn-connect">
+                        Conectar
+                    </button>
+                    <div class="error-msg hidden" id="receiver-error"></div>
+                </div>
+
+                <!-- Passo 2: conectando / aguardando oferta -->
+                <div id="receiver-step-wait" class="step">
+                    <div class="status-msg" id="receiver-status">
+                        Conectando...
+                    </div>
+                    <div class="spinner" id="receiver-spinner"></div>
+                    <div class="error-msg hidden" id="receiver-ws-error"></div>
+                </div>
+
+                <!-- Passo 3: recebendo -->
+                <div id="receiver-step-transfer" class="step">
+                    <div class="file-info" id="receiver-file-info"></div>
+                    <div class="transfer-box">
+                        <div class="transfer-label">Recebendo...</div>
+                        <div class="progress-bar">
+                            <div
+                                class="progress-fill"
+                                id="receiver-progress-fill"
+                            ></div>
+                        </div>
+                        <div class="transfer-stats">
+                            <span id="receiver-progress-pct">0%</span>
+                            <span id="receiver-eta"></span>
+                            <span id="receiver-speed"></span>
+                        </div>
+                    </div>
+                    <div class="error-msg hidden" id="receiver-transfer-error"></div>
+                </div>
+
+                <!-- Passo 4: concluído -->
+                <div id="receiver-step-done" class="step">
+                    <div class="done-icon">&#10003;</div>
+                    <h3>Arquivo recebido!</h3>
+                    <p id="receiver-done-info"></p>
+                    <button class="btn-primary" id="receiver-btn-download">
+                        Baixar arquivo
+                    </button>
+                    <button class="btn-secondary" id="receiver-btn-new">
+                        Nova transferência
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- #app -->
+
+        <script src="qrcode.min.js"></script>
+        <script src="bip39_pt.js"></script>
+        <script src="app.js"></script>
+    </body>
+</html>
