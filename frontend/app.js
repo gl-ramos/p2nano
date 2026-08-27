@@ -174,6 +174,7 @@ let _pc = null;  // RTCPeerConnection
 let _dc = null;  // RTCDataChannel (lado do sender)
 let _file = null; // File selecionado
 let _receivedBlob = null; // Blob reconstruído no receptor
+let _roomURL = null; // URL completa da sala (para copiar link)
 // ICE candidates que chegaram antes do setRemoteDescription estar pronto.
 let _pendingCandidates = [];
 
@@ -211,6 +212,7 @@ async function startSender(file) {
   // Gera QR Code com URL para auto-preenchimento no receptor
   const qrContainer = $("qr-container");
   const roomURL = `${location.origin}${location.pathname}?room=${roomCode}`;
+  _roomURL = roomURL;
   drawQRCode(qrContainer, roomURL);
 
   // Abre sinalização
@@ -653,6 +655,20 @@ $("btn-copy-code").addEventListener("click", () => {
     btn.classList.add("copied");
     setTimeout(() => {
       btn.textContent = "Copiar código";
+      btn.classList.remove("copied");
+    }, 2000);
+  });
+});
+
+// Copiar link — copia a URL completa da sala
+$("btn-copy-link").addEventListener("click", () => {
+  if (!_roomURL) return;
+  navigator.clipboard.writeText(_roomURL).then(() => {
+    const btn = $("btn-copy-link");
+    btn.textContent = "Copiado!";
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = "Copiar link";
       btn.classList.remove("copied");
     }, 2000);
   });

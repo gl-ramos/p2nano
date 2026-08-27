@@ -234,6 +234,14 @@ h3 {
     border-color: var(--success);
 }
 
+/* ── Linha de botões ────────────────────────────────────────────────────── */
+.btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
 /* ── File info ──────────────────────────────────────────────────────────── */
 .file-info {
     background: var(--surface);
